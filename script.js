@@ -3,12 +3,12 @@
 // --- INICIALIZAÇÃO DO FIREBASE ---
 // COLE AQUI O OBJETO firebaseConfig QUE VOCÊ COPIOU DO CONSOLE DO FIREBASE
 const firebaseConfig = {
-  apiKey: "SEU_API_KEY",
-  authDomain: "SEU_AUTH_DOMAIN",
-  projectId: "SEU_PROJECT_ID",
-  storageBucket: "SEU_STORAGE_BUCKET",
-  messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-  appId: "SEU_APP_ID"
+    apiKey: "AIzaSyB5Z3WpesLT_FIYnz5YR-SlUcLGbIqCQpo",
+    authDomain: "sistema-clinica-web.firebaseapp.com",
+    projectId: "sistema-clinica-web",
+    storageBucket: "sistema-clinica-web.firebasestorage.app",
+    messagingSenderId: "592058797404",
+    appId: "1:592058797404:web:9616e9623b0e16e76e8599"
 };
 
 // Inicializa o Firebase
