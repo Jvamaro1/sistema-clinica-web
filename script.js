@@ -1,29 +1,33 @@
-// --- SIMULATED DATABASE ---
+// script.js
+
+// --- INICIALIZAÇÃO DO FIREBASE ---
+// COLE AQUI O OBJETO firebaseConfig QUE VOCÊ COPIOU DO CONSOLE DO FIREBASE
+const firebaseConfig = {
+  apiKey: "SEU_API_KEY",
+  authDomain: "SEU_AUTH_DOMAIN",
+  projectId: "SEU_PROJECT_ID",
+  storageBucket: "SEU_STORAGE_BUCKET",
+  messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+  appId: "SEU_APP_ID"
+};
+
+// Inicializa o Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// --- DADOS LOCAIS (APENAS PARA CONTROLE DE UI E CACHE) ---
+let localMedicos = [];
+let localPacientes = [];
+let localExames = [];
+let localConsultas = [];
+
+// --- AUTENTICAÇÃO (AINDA SIMULADA) ---
 const users = [
     { username: 'medico', password: '123', role: 'medico', nome: 'Dr. Carlos (Logado)' },
     { username: 'secretaria', password: '123', role: 'secretaria', nome: 'Ana (Secretária)' },
 ];
 let currentUser = null;
 
-let medicos = [
-    { id: 1, nome: 'Dr. Carlos Andrade', especialidade: 'Cardiologia', crm: '12345-SP' },
-    { id: 2, nome: 'Dra. Ana Beatriz', especialidade: 'Dermatologia', crm: '54321-RJ' },
-];
-let pacientes = [
-    { id: 1, nome: 'João da Silva', dtNasc: '1985-02-20', cpf: '111.222.333-44', contato: '(11) 98765-4321' },
-    { id: 2, nome: 'Maria Pereira', dtNasc: '1992-07-15', cpf: '444.555.666-77', contato: '(21) 91234-5678' },
-];
-let exames = [
-    { id: 1, nome: 'Eletrocardiograma', tipo: 'Cardiológico', descricao: 'Avalia a atividade elétrica do coração.' },
-    { id: 2, nome: 'Hemograma Completo', tipo: 'Laboratorial', descricao: 'Análise das células sanguíneas.' },
-];
-let consultas = [
-    { id: 1, pacienteId: 1, medicoId: 1, data: '2025-08-25T10:00', status: 'Agendada', parecer: '' },
-    { id: 2, pacienteId: 2, medicoId: 2, data: '2025-08-26T14:30', status: 'Realizada', parecer: 'Paciente apresenta quadro estável. Retornar em 6 meses.' },
-];
-let nextIds = { medico: 3, paciente: 3, exame: 3, consulta: 3 };
-
-// --- AUTHENTICATION & PERMISSIONS ---
 function applyRolePermissions() {
     const addPacienteContainer = document.getElementById('add-paciente-container');
     const addMedicoContainer = document.getElementById('add-medico-container');
@@ -51,7 +55,8 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
         document.getElementById('app-screen').classList.remove('hidden');
         document.getElementById('user-info').textContent = `Bem-vindo(a), ${currentUser.nome}`;
         applyRolePermissions();
-        renderAll();
+        // Inicia o carregamento de dados do Firestore após o login
+        loadAllDataFromFirestore();
     } else {
         errorDiv.classList.remove('hidden');
     }
@@ -65,18 +70,38 @@ document.getElementById('logout-button').addEventListener('click', function() {
     document.getElementById('login-error').classList.add('hidden');
 });
 
+// --- CARREGAMENTO DE DADOS EM TEMPO REAL DO FIRESTORE ---
+function loadAllDataFromFirestore() {
+    // Carrega Médicos
+    db.collection('medicos').onSnapshot(snapshot => {
+        localMedicos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderMedicosTable();
+    });
 
-// --- RENDER FUNCTIONS ---
-function renderAll() {
-    renderMedicosTable();
-    renderPacientesTable();
-    renderExamesTable();
-    renderAgendaTable();
+    // Carrega Pacientes
+    db.collection('pacientes').onSnapshot(snapshot => {
+        localPacientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderPacientesTable();
+    });
+
+    // Carrega Exames
+    db.collection('exames').onSnapshot(snapshot => {
+        localExames = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderExamesTable();
+    });
+
+    // Carrega Consultas
+    db.collection('consultas').orderBy('data').onSnapshot(snapshot => {
+        localConsultas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderAgendaTable();
+    });
 }
 
+
+// --- FUNÇÕES DE RENDERIZAÇÃO (agora usam os dados locais que são sincronizados) ---
 function renderMedicosTable() {
     const tbody = document.getElementById('medicos-table-body');
-    tbody.innerHTML = medicos.map(medico => `
+    tbody.innerHTML = localMedicos.map(medico => `
         <tr class="border-b hover:bg-gray-50">
             <td class="py-3 px-4">${medico.nome}</td>
             <td class="py-3 px-4">${medico.especialidade}</td>
@@ -87,7 +112,7 @@ function renderMedicosTable() {
 
 function renderPacientesTable() {
     const tbody = document.getElementById('pacientes-table-body');
-    tbody.innerHTML = pacientes.map(paciente => `
+    tbody.innerHTML = localPacientes.map(paciente => `
         <tr class="border-b hover:bg-gray-50">
             <td class="py-3 px-4">${paciente.nome}</td>
             <td class="py-3 px-4">${new Date(paciente.dtNasc).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</td>
@@ -99,7 +124,7 @@ function renderPacientesTable() {
 
 function renderExamesTable() {
     const tbody = document.getElementById('exames-table-body');
-    tbody.innerHTML = exames.map(exame => `
+    tbody.innerHTML = localExames.map(exame => `
         <tr class="border-b hover:bg-gray-50">
             <td class="py-3 px-4">${exame.nome}</td>
             <td class="py-3 px-4">${exame.tipo}</td>
@@ -110,10 +135,9 @@ function renderExamesTable() {
 
 function renderAgendaTable() {
     const tbody = document.getElementById('agenda-table-body');
-    consultas.sort((a, b) => new Date(a.data) - new Date(b.data)); // Sort by date
-    tbody.innerHTML = consultas.map(consulta => {
-        const paciente = pacientes.find(p => p.id === consulta.pacienteId);
-        const medico = medicos.find(m => m.id === consulta.medicoId);
+    tbody.innerHTML = localConsultas.map(consulta => {
+        const paciente = localPacientes.find(p => p.id === consulta.pacienteId);
+        const medico = localMedicos.find(m => m.id === consulta.medicoId);
         const dataFormatada = new Date(consulta.data).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         const statusClass = consulta.status === 'Agendada' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800';
 
@@ -124,7 +148,7 @@ function renderAgendaTable() {
                 <td class="py-3 px-4">${medico?.nome || 'Não encontrado'}</td>
                 <td class="py-3 px-4"><span class="px-2 py-1 text-sm font-semibold rounded-full ${statusClass}">${consulta.status}</span></td>
                 <td class="py-3 px-4 text-center">
-                    <button onclick="openParecerModal(${consulta.id})" class="text-blue-600 hover:text-blue-800" title="Ver/Editar Parecer">
+                    <button onclick="openParecerModal('${consulta.id}')" class="text-blue-600 hover:text-blue-800" title="Ver/Editar Parecer">
                         <i class="fas fa-file-medical-alt fa-lg"></i>
                     </button>
                 </td>
@@ -149,18 +173,18 @@ function closeModal(modalId) {
 
 function populateConsultaModalDropdowns() {
     const pacienteSelect = document.getElementById('consulta-paciente');
-    pacienteSelect.innerHTML = '<option value="">Selecione um paciente</option>' + pacientes.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+    pacienteSelect.innerHTML = '<option value="">Selecione um paciente</option>' + localPacientes.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
 
     const medicoSelect = document.getElementById('consulta-medico');
-    medicoSelect.innerHTML = '<option value="">Selecione um médico</option>' + medicos.map(m => `<option value="${m.id}">${m.nome} - ${m.especialidade}</option>`).join('');
+    medicoSelect.innerHTML = '<option value="">Selecione um médico</option>' + localMedicos.map(m => `<option value="${m.id}">${m.nome} - ${m.especialidade}</option>`).join('');
 }
 
 function openParecerModal(consultaId) {
-    const consulta = consultas.find(c => c.id === consultaId);
+    const consulta = localConsultas.find(c => c.id === consultaId);
     if (!consulta) return;
 
-    const paciente = pacientes.find(p => p.id === consulta.pacienteId);
-    const medico = medicos.find(m => m.id === consulta.medicoId);
+    const paciente = localPacientes.find(p => p.id === consulta.pacienteId);
+    const medico = localMedicos.find(m => m.id === consulta.medicoId);
     const dataFormatada = new Date(consulta.data).toLocaleString('pt-BR');
 
     document.getElementById('parecer-consulta-id').value = consulta.id;
@@ -173,7 +197,6 @@ function openParecerModal(consultaId) {
     
     parecerTexto.value = consulta.parecer;
 
-    // Role-based access control
     if (currentUser && currentUser.role === 'medico') {
         parecerTexto.readOnly = false;
         parecerTexto.classList.remove('bg-gray-200');
@@ -187,81 +210,91 @@ function openParecerModal(consultaId) {
     openModal('parecer-modal');
 }
 
-// --- FORM SUBMISSION HANDLERS ---
-document.getElementById('medico-form').addEventListener('submit', function(e) {
+// --- FORM SUBMISSION HANDLERS (agora salvam no Firestore) ---
+document.getElementById('medico-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const novoMedico = {
-        id: nextIds.medico++,
         nome: document.getElementById('medico-nome').value,
         especialidade: document.getElementById('medico-especialidade').value,
         crm: document.getElementById('medico-crm').value,
     };
-    medicos.push(novoMedico);
-    renderMedicosTable();
-    closeModal('medico-modal');
+    try {
+        await db.collection('medicos').add(novoMedico);
+        closeModal('medico-modal');
+    } catch (error) {
+        console.error("Erro ao adicionar médico: ", error);
+    }
 });
 
-document.getElementById('paciente-form').addEventListener('submit', function(e) {
+document.getElementById('paciente-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const novoPaciente = {
-        id: nextIds.paciente++,
         nome: document.getElementById('paciente-nome').value,
         dtNasc: document.getElementById('paciente-dtnasc').value,
         cpf: document.getElementById('paciente-cpf').value,
         contato: document.getElementById('paciente-contato').value,
     };
-    pacientes.push(novoPaciente);
-    renderPacientesTable();
-    closeModal('paciente-modal');
+    try {
+        await db.collection('pacientes').add(novoPaciente);
+        closeModal('paciente-modal');
+    } catch (error) {
+        console.error("Erro ao adicionar paciente: ", error);
+    }
 });
 
-document.getElementById('exame-form').addEventListener('submit', function(e) {
+document.getElementById('exame-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const novoExame = {
-        id: nextIds.exame++,
         nome: document.getElementById('exame-nome').value,
         tipo: document.getElementById('exame-tipo').value,
         descricao: document.getElementById('exame-descricao').value,
     };
-    exames.push(novoExame);
-    renderExamesTable();
-    closeModal('exame-modal');
+    try {
+        await db.collection('exames').add(novoExame);
+        closeModal('exame-modal');
+    } catch (error) {
+        console.error("Erro ao adicionar exame: ", error);
+    }
 });
 
-document.getElementById('consulta-form').addEventListener('submit', function(e) {
+document.getElementById('consulta-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const novaConsulta = {
-        id: nextIds.consulta++,
-        pacienteId: parseInt(document.getElementById('consulta-paciente').value),
-        medicoId: parseInt(document.getElementById('consulta-medico').value),
+        pacienteId: document.getElementById('consulta-paciente').value,
+        medicoId: document.getElementById('consulta-medico').value,
         data: document.getElementById('consulta-data').value,
         status: 'Agendada',
         parecer: '',
     };
-    consultas.push(novaConsulta);
-    renderAgendaTable();
-    closeModal('consulta-modal');
+    try {
+        await db.collection('consultas').add(novaConsulta);
+        closeModal('consulta-modal');
+    } catch (error) {
+        console.error("Erro ao agendar consulta: ", error);
+    }
 });
-
-document.getElementById('parecer-form').addEventListener('submit', function(e) {
+        
+document.getElementById('parecer-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     if (currentUser && currentUser.role !== 'medico') {
-        console.error("Acesso negado: apenas médicos podem salvar pareceres.");
+        console.error("Acesso negado.");
         return;
     }
 
-    const consultaId = parseInt(document.getElementById('parecer-consulta-id').value);
+    const consultaId = document.getElementById('parecer-consulta-id').value;
     const parecerTexto = document.getElementById('parecer-texto').value;
     
-    const consulta = consultas.find(c => c.id === consultaId);
-    if (consulta) {
-        consulta.parecer = parecerTexto;
-        if (parecerTexto.trim() !== '') {
-            consulta.status = 'Realizada';
-        }
+    const consultaRef = db.collection('consultas').doc(consultaId);
+    
+    try {
+        await consultaRef.update({
+            parecer: parecerTexto,
+            status: parecerTexto.trim() !== '' ? 'Realizada' : 'Agendada'
+        });
+        closeModal('parecer-modal');
+    } catch (error) {
+        console.error("Erro ao salvar parecer: ", error);
     }
-    renderAgendaTable();
-    closeModal('parecer-modal');
 });
 
 // --- NAVIGATION ---
