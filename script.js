@@ -3,12 +3,12 @@
 // --- INICIALIZAÇÃO DO FIREBASE ---
 // COLE AQUI O OBJETO firebaseConfig QUE VOCÊ COPIOU DO CONSOLE DO FIREBASE
 const firebaseConfig = {
-  apiKey: "AIzaSyB5Z3WpesLT_FIYnz5YR-SlUcLGbIqCQpo",
-  authDomain: "sistema-clinica-web.firebaseapp.com",
-  projectId: "sistema-clinica-web",
-  storageBucket: "sistema-clinica-web.firebasestorage.app",
-  messagingSenderId: "592058797404",
-  appId: "1:592058797404:web:9616e9623b0e16e76e8599"
+  apiKey: "SEU_API_KEY",
+  authDomain: "SEU_AUTH_DOMAIN",
+  projectId: "SEU_PROJECT_ID",
+  storageBucket: "SEU_STORAGE_BUCKET",
+  messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+  appId: "SEU_APP_ID"
 };
 
 // Inicializa o Firebase
@@ -20,85 +20,97 @@ let localMedicos = [];
 let localPacientes = [];
 let localExames = [];
 let localConsultas = [];
+let localUsers = [];
 
-// --- AUTENTICAÇÃO (AINDA SIMULADA) ---
-const users = [
-    { username: 'medico', password: '123', role: 'medico', nome: 'Dr. Carlos (Logado)' },
-    { username: 'secretaria', password: '123', role: 'secretaria', nome: 'Ana (Secretária)' },
-];
+// --- AUTENTICAÇÃO E PERMISSÕES ---
 let currentUser = null;
 
 function applyRolePermissions() {
     const addPacienteContainer = document.getElementById('add-paciente-container');
     const addMedicoContainer = document.getElementById('add-medico-container');
+    const adminNavLink = document.getElementById('nav-admin');
 
-    if (currentUser && currentUser.role === 'medico') {
+    // Reset visibility
+    addPacienteContainer.classList.remove('hidden');
+    addMedicoContainer.classList.remove('hidden');
+    adminNavLink.classList.add('hidden');
+
+    if (currentUser.role === 'admin') {
+        adminNavLink.classList.remove('hidden');
+    }
+    if (currentUser.role === 'medico') {
         addPacienteContainer.classList.add('hidden');
         addMedicoContainer.classList.add('hidden');
-    } else {
-        addPacienteContainer.classList.remove('hidden');
-        addMedicoContainer.classList.remove('hidden');
     }
 }
 
-document.getElementById('login-form').addEventListener('submit', function(e) {
+document.getElementById('login-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('login-error');
 
-    const user = users.find(u => u.username === username && u.password === password);
+    try {
+        const userQuery = await db.collection('users')
+            .where('username', '==', username)
+            .where('password', '==', password)
+            .get();
 
-    if (user) {
-        currentUser = user;
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('app-screen').classList.remove('hidden');
-        document.getElementById('user-info').textContent = `Bem-vindo(a), ${currentUser.nome}`;
-        applyRolePermissions();
-        // Inicia o carregamento de dados do Firestore após o login
-        loadAllDataFromFirestore();
-    } else {
+        if (!userQuery.empty) {
+            currentUser = userQuery.docs[0].data();
+            errorDiv.classList.add('hidden');
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+            document.getElementById('user-info').textContent = `Bem-vindo(a), ${currentUser.nome}`;
+            applyRolePermissions();
+            loadAllDataFromFirestore();
+        } else {
+            errorDiv.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error("Erro de login: ", error);
         errorDiv.classList.remove('hidden');
     }
 });
 
 document.getElementById('logout-button').addEventListener('click', function() {
     currentUser = null;
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('app-screen').classList.add('hidden');
-    document.getElementById('login-form').reset();
-    document.getElementById('login-error').classList.add('hidden');
+    // Simple logout, for real apps use Firebase Auth
+    location.reload();
 });
 
 // --- CARREGAMENTO DE DADOS EM TEMPO REAL DO FIRESTORE ---
 function loadAllDataFromFirestore() {
-    // Carrega Médicos
     db.collection('medicos').onSnapshot(snapshot => {
         localMedicos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderMedicosTable();
     });
 
-    // Carrega Pacientes
     db.collection('pacientes').onSnapshot(snapshot => {
         localPacientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderPacientesTable();
     });
 
-    // Carrega Exames
     db.collection('exames').onSnapshot(snapshot => {
         localExames = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderExamesTable();
     });
 
-    // Carrega Consultas
     db.collection('consultas').orderBy('data').onSnapshot(snapshot => {
         localConsultas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderAgendaTable();
     });
+
+    if (currentUser.role === 'admin') {
+        db.collection('users').onSnapshot(snapshot => {
+            localUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderUsersTable();
+        });
+    }
 }
 
 
-// --- FUNÇÕES DE RENDERIZAÇÃO (agora usam os dados locais que são sincronizados) ---
+// --- FUNÇÕES DE RENDERIZAÇÃO ---
 function renderMedicosTable() {
     const tbody = document.getElementById('medicos-table-body');
     tbody.innerHTML = localMedicos.map(medico => `
@@ -157,6 +169,17 @@ function renderAgendaTable() {
     }).join('');
 }
 
+function renderUsersTable() {
+    const tbody = document.getElementById('users-table-body');
+    tbody.innerHTML = localUsers.map(user => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="py-3 px-4">${user.nome}</td>
+            <td class="py-3 px-4">${user.username}</td>
+            <td class="py-3 px-4 capitalize">${user.role}</td>
+        </tr>
+    `).join('');
+}
+
 // --- MODAL FUNCTIONS ---
 function openModal(modalId) {
     if (modalId === 'consulta-modal') {
@@ -210,7 +233,7 @@ function openParecerModal(consultaId) {
     openModal('parecer-modal');
 }
 
-// --- FORM SUBMISSION HANDLERS (agora salvam no Firestore) ---
+// --- FORM SUBMISSION HANDLERS ---
 document.getElementById('medico-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const novoMedico = {
@@ -297,6 +320,27 @@ document.getElementById('parecer-form').addEventListener('submit', async functio
     }
 });
 
+document.getElementById('create-user-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (currentUser.role !== 'admin') {
+        console.error("Acesso negado. Apenas administradores podem criar usuários.");
+        return;
+    }
+    const newUser = {
+        nome: document.getElementById('new-user-nome').value,
+        username: document.getElementById('new-user-username').value,
+        password: document.getElementById('new-user-password').value,
+        role: document.getElementById('new-user-role').value,
+    };
+    try {
+        await db.collection('users').add(newUser);
+        document.getElementById('create-user-form').reset();
+    } catch (error) {
+        console.error("Erro ao criar usuário: ", error);
+    }
+});
+
+
 // --- NAVIGATION ---
 const navLinks = document.querySelectorAll('.nav-link');
 const views = document.querySelectorAll('#views-container > div');
@@ -306,6 +350,7 @@ const titles = {
     'nav-pacientes': 'Cadastro de Pacientes',
     'nav-medicos': 'Cadastro de Médicos',
     'nav-exames': 'Cadastro de Exames',
+    'nav-admin': 'Administração de Usuários',
 };
 
 navLinks.forEach(link => {
