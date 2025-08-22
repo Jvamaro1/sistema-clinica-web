@@ -2,13 +2,11 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <!-- =================================================================== -->
     <!-- SOLUÇÃO PARA ERRO DE REACT INJETADO PELA VERCEL/EXTENSÕES -->
     <script>
       // Impede que scripts externos causem erros de React em uma página que não usa React.
       window.React = undefined;
     </script>
-    <!-- =================================================================== -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestão de Clínica</title>
     <!-- Tailwind CSS CDN -->
@@ -78,6 +76,10 @@
                     <a href="#" id="nav-exames" class="nav-link flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
                         <i class="fas fa-vial w-6"></i>
                         <span>Exames</span>
+                    </a>
+                    <a href="#" id="nav-admin" class="nav-link hidden flex items-center px-4 py-2 rounded-lg hover:bg-gray-700">
+                        <i class="fas fa-user-shield w-6"></i>
+                        <span>Administração</span>
                     </a>
                 </nav>
             </div>
@@ -187,6 +189,57 @@
                                 </table>
                             </div>
                         </div>
+                        
+                        <!-- Admin View -->
+                        <div id="admin-view" class="hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Formulário de Criação de Usuário -->
+                                <div class="bg-white p-6 rounded-lg shadow-lg">
+                                    <h2 class="text-xl font-bold mb-4">Criar Novo Usuário</h2>
+                                    <form id="create-user-form">
+                                        <div class="mb-4">
+                                            <label for="new-user-nome" class="block text-gray-700 mb-2">Nome Completo</label>
+                                            <input type="text" id="new-user-nome" class="w-full p-2 border rounded-lg" required>
+                                        </div>
+                                        <div class="mb-4">
+                                            <label for="new-user-username" class="block text-gray-700 mb-2">Usuário (login)</label>
+                                            <input type="text" id="new-user-username" class="w-full p-2 border rounded-lg" required>
+                                        </div>
+                                        <div class="mb-4">
+                                            <label for="new-user-password" class="block text-gray-700 mb-2">Senha</label>
+                                            <input type="password" id="new-user-password" class="w-full p-2 border rounded-lg" required>
+                                        </div>
+                                        <div class="mb-4">
+                                            <label for="new-user-role" class="block text-gray-700 mb-2">Perfil</label>
+                                            <select id="new-user-role" class="w-full p-2 border rounded-lg" required>
+                                                <option value="secretaria">Secretária</option>
+                                                <option value="medico">Médico</option>
+                                            </select>
+                                        </div>
+                                        <div class="flex justify-end">
+                                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Criar Usuário</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <!-- Lista de Usuários -->
+                                <div class="bg-white p-6 rounded-lg shadow-lg">
+                                    <h2 class="text-xl font-bold mb-4">Usuários Cadastrados</h2>
+                                    <table class="w-full text-left">
+                                        <thead>
+                                            <tr class="border-b">
+                                                <th class="py-2 px-4">Nome</th>
+                                                <th class="py-2 px-4">Usuário</th>
+                                                <th class="py-2 px-4">Perfil</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="users-table-body">
+                                            <!-- Usuários serão listados aqui -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </main>
