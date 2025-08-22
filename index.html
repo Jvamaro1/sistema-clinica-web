@@ -1,8 +1,14 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <!-- =================================================================== -->
+    <!-- SOLUÇÃO PARA ERRO DE REACT INJETADO PELA VERCEL/EXTENSÕES -->
+    <script>
+      // Impede que scripts externos causem erros de React em uma página que não usa React.
+      window.React = undefined;
+    </script>
+    <!-- =================================================================== -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gestão de Clínica</title>
     <!-- Tailwind CSS CDN -->
